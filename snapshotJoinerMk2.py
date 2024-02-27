@@ -107,6 +107,8 @@ def solve_group (group_zero, group_one, group_master, rotation_angles,
                 if current_data == "Velocities":
                     data_ = data_ + relative_vel
 
+                current_data.append(data_)
+            
             else:
                 current_data.append(group_one[current_dataset][:])
         else:
