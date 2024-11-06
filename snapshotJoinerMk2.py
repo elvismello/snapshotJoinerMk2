@@ -1,3 +1,5 @@
+#!/bin/python3
+
 """
 DESCRIPTION:
 
@@ -94,17 +96,18 @@ def solve_group (group_zero, group_one, group_master, rotation_angles,
 
         
         if current_dataset in group_one:
-            data_ = group_one[current_dataset]
+            data_ = group_one[current_dataset][:]
 
             # exception for position and velocity, which should be rotated and translated
             if current_dataset in ["Coordinates", "Velocities"]:
                 if np.any(rotation_angles):
                     data_ = np.array([rotation(h, *rotation_angles) for h in data_])
 
-                if current_data == "Coordinates":
+                if current_dataset == "Coordinates":
+                    print(current_dataset)
                     data_ = data_ + relative_pos
 
-                if current_data == "Velocities":
+                if current_dataset == "Velocities":
                     data_ = data_ + relative_vel
 
                 current_data.append(data_)
