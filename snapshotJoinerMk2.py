@@ -284,8 +284,8 @@ def join (snapshot_zero, snapshot_one, output="init.hdf5",
                     current_coordinates = np.array([rotation(h, *rotation_angles) for h in current_coordinates])
                     current_velocities = np.array([rotation(h, *rotation_angles) for h in current_velocities])
                 
-                all_data[current_group]["Coordinates"] = current_coordinates
-                all_data[current_group]["Velocities"] = current_velocities
+                all_data[current_group]["Coordinates"] = current_coordinates + relative_pos
+                all_data[current_group]["Velocities"] = current_velocities + relative_vel
 
         else:
             pass
