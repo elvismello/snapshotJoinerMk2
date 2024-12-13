@@ -3,14 +3,14 @@
 """
 DESCRIPTION:
 
-usage: python snapshotJoiner.py haloA haloB haloAB  0 0 0  0 0 0  0 0 0
+usage: python snapshotJoiner.py haloA haloB haloAB  x y z  vx vy vz  rx ry rz
 
-where the zeros are meant to be relative positions in x y z, relative
-velocities in vx vy vz, then angles of rotation around the x, y and z axis.
+the last parameters are relative positions in x y z, relative
+velocities in vx vy vz, then angles of rotation around the x, y and z axis,
+respectively.
 
 
-Script that joins snapshots and writes them by directly passing the necessary
-data to the function write_snapshot.
+Script that joins snapshots.
 
 """
 
@@ -22,9 +22,12 @@ import argparse
 
 def rotation (vector, alpha=0.0, beta=0.0, gamma=0.0, returnMatrix=False, dtype="float64"):
     """
+    Expects radians.
+    
     alpha: angle of rotation around the x axis
     beta: angle of rotation around the y axis
     gamma: angle of rotation around the z axis
+    
     """
     # It may be better to find a way to apply a rotation without using an external for loop.
     vector = np.array(vector)
@@ -56,7 +59,10 @@ def rotation (vector, alpha=0.0, beta=0.0, gamma=0.0, returnMatrix=False, dtype=
 
 def get_master_structure (snapshot_zero, snapshot_one):
     """
-    Should return the output structure, joining both snapshots
+    Returns the output structure, keeping all datasets from the original
+    snapshots.
+
+    Ignores Header, Config and Parameters groups.
     
     """
 
@@ -83,6 +89,18 @@ def get_master_structure (snapshot_zero, snapshot_one):
 
 def solve_group (group_zero, group_one, group_master, rotation_angles,
                  relative_pos, relative_vel):
+    """
+    Solves how datasets should be joined, filling missing information with
+    zeros.
+
+    group_zero: first group that will NOT be rotated nor translated.
+    group_one: second groups that WILL be rotated and translated.
+    group_master: expected resulting structure.
+    rotation_angles: angles to be used when applying rotation.
+    relative_pos: relative position for translating the second snapshot.
+    relative_vel: relative velocity for adding to the second snapshot.
+    """
+
 
     solved_groups = {}
     for current_dataset in group_master:
@@ -204,7 +222,7 @@ def write_snapshot (all_data, output_name, npart):
 
 def join (snapshot_zero, snapshot_one, output="init.hdf5",
           relative_pos=[0.0, 0.0, 0.0], relative_vel=[0.0, 0.0, 0.0],
-          rotation_angles=[0.0, 0.0, 0.0], shift_to_com=True,
+          rotation_angles=[0.0, 0.0, 0.0], shift_to_com=False,
           write_new_snapshot=True, include_halo_zero=True,
           metallicity_in_everything=False, arepo=False):
     
@@ -292,7 +310,27 @@ def join (snapshot_zero, snapshot_one, output="init.hdf5",
             # should this part exist?
 
 
-    # TODO write section to center snapshots on center of mass or center of density
+    if shift_to_com:
+        total_mass = 0
+        pondered_coordinates = []
+        for current_group in master_structure:
+            current_coordinates = all_data[current_group]["Coordinates"]
+            current_masses = all_data[current_group]["Masses"]
+
+            pondered_coordinates.append(
+                np.sum(current_masses[:, np.newaxis] * current_coordinates, axis=0))
+            total_mass += np.sum(current_masses)
+            #print(total_mass)
+
+        center_of_mass = np.sum(np.array(pondered_coordinates) / total_mass, axis=0)
+        
+        print("The center of mass is located at",
+              f"{center_of_mass[0]:0.2f} {center_of_mass[1]:0.2f} {center_of_mass[2]:0.2f}. ",
+              "Shifting to it...")
+        
+        for current_group in master_structure:
+            all_data[current_group]["Coordinates"] -= center_of_mass
+
 
     all_data, npart = fix_ids_and_npart(all_data)
 
@@ -309,35 +347,12 @@ def join (snapshot_zero, snapshot_one, output="init.hdf5",
 
     for i, j in zip(indexes, npart):
         final_npart[i] = j
-        print(i, j)
-
-
-    #while len(npart) < 6:
-    #    npart.append(0)
-    #print(npart)
+        #print(i, j)
 
 
     print(f"Writing snapshot as {output}...")
     write_snapshot(all_data, output, final_npart)
     print("Done!")
-
-
-#
-#    #Shifting to center of mass
-#    if shiftToCOM:
-#        print("Shifting coordinates to center of mass...")
-#        xCOM  = sum(dataList[0][:, 0] * dataList[3]) / sum(dataList[3])
-#        yCOM  = sum(dataList[0][:, 1] * dataList[3]) / sum(dataList[3])
-#        zCOM  = sum(dataList[0][:, 2] * dataList[3]) / sum(dataList[3])
-#
-#        vxCOM = sum(dataList[1][:, 0] * dataList[3]) / sum(dataList[3])
-#        vyCOM = sum(dataList[1][:, 1] * dataList[3]) / sum(dataList[3])
-#        vzCOM = sum(dataList[1][:, 2] * dataList[3]) / sum(dataList[3])
-#
-#        dataList[0] = dataList[0] - [xCOM, yCOM, zCOM]
-#        dataList[1] = dataList[1] - [vxCOM, vyCOM, vzCOM]
-#
-#
 
 
 
@@ -372,8 +387,9 @@ if __name__ == "__main__":
     parser.add_argument("--noMainHalo", action="store_false", help="This will\
                          make the program skip the halo of dark matter in the\
                          first snapshot given.")
-    parser.add_argument("--noCOMshift", action="store_false", help="This will\
-                         skip the final shift into the center of mass.")
+    parser.add_argument("--COMshift", action="store_true", help="This will\
+                         shift the resultng snapshot into into the center of\
+                         mass.")
 
     args = parser.parse_args()
 
@@ -383,7 +399,7 @@ if __name__ == "__main__":
          relative_vel=args.relative_velocity,
          rotation_angles=args.rotation,
          include_halo_zero=args.noMainHalo,
-         shift_to_com=args.noCOMshift)
+         shift_to_com=args.COMshift)
 
 
 
