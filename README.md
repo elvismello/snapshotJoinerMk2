@@ -9,7 +9,7 @@ Has some functions based on "snapwrite" contained in [Rafael Ruggiero](https://r
 
 ## Rotation angles, relative position and velocity
 
-This program applies rotation to the second snapshot considering around its original x, y and z axis. After this rotation, the given relative position and velocity is summed to all position and velocity vectors of the second snapshot.
+This program applies a rotation to the second snapshot considering angles around its original x, y and z axis. After this rotation, the given relative position and velocity is summed to all position and velocity vectors of the second snapshot.
 
 
 
